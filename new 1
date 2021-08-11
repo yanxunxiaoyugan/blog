@@ -1,0 +1,175 @@
+			Page<MonitorInfo> monitorInfoPage = monitorClient.paging(page, size,
+					name, null, null, null, null, null, null, type, online);
+					
+					Page<MonitorInfo> monitorInfoPage = monitorClient.paging(page, size,
+					name, null, groupId, true, null, null, null, type, online);
+
+
+
+
+OAuth2AuthenticationManager：
+	依靠token从数据库中把权限等信息取出来（permissions等信息）
+
+
+
+2 ，7， 15
+
+5
+res[i] = res[ i &(i - 1)]+1;
+1 
+[0,0,0,0,0,0]
+	
+1、判断是否结束
+2、是否允许多例，
+3、判断任务是否已经过期
+4、执行，报错状态
+
+
+
+
+
+
+
+2020/6/29
+todo  验证表头，错误信息的填写
+
+2020/7/9
+1、加上分布式锁 √
+2、去除excel行数的验证 √
+3、初始化异步线程池，对导入的handler实现异步处理 // 添加线程池配置
+4、自定义抓取异常，把表头的错误信息写入到excel 
+5、把线程池的信息提取到common-bean //todo 
+6、搭建stomp的环境，对于新连接的用户新建queue //todo
+7、对导入的数据实现实时的进度，并返回给前端（使用/user的模式）
+
+
+
+1、把queue/message写入到def中
+2、pom文件
+3、线程池
+
+		InputStream inputStream;
+		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+		// 生成文件路劲
+		String filePath = this.generateFilePath();
+
+		List<ExcelHeaderErrorTemplate> excelHeaderErrorTemplates = new ArrayList<>();
+		excelHeaderErrorTemplates.add(new ExcelHeaderErrorTemplate());
+
+		EasyExcel.write(outputStream).inMemory(Boolean.TRUE).sheet("sheet1")
+				.doWrite(excelHeaderErrorTemplates);
+		inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+		ossFileService.upload(ossProperties, filePath, inputStream);
+		ImportResult result = new ImportResult();
+		result.setProgress(100);
+		result.setHasError(true);
+		result.setErrorFilePath(
+				ossProperties.getCdnFull() +filePath);
+		this.sendProgressToUser(result, userId);
+		log.info("资产批量导入错误文件地址：" + ossProperties.getCdnFull() + filePath);
+		return ossProperties.getCdnFull() + filePath;
+
+
+// 如果验证过程中发现了错误,则把错误信息写入到excel
+		InputStream inputStream;
+		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+		// 把数据写入到OutputStream
+		EasyExcel.write(outputStream, AssetImportData.class)
+				.inMemory(Boolean.TRUE)
+				.registerWriteHandler(new AssetWriteHandler(
+						validateResult.getValidateContext()))
+				.sheet("sheet1").doWrite(datas);
+		// 生成文件路劲
+		String filePath = this.generateFilePath();
+		inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+		ossFileService.upload(ossProperties, filePath, inputStream);
+		return ossProperties.getCdnFull() + filePath;
+
+
+
+
+
+
+
+	/**
+	 * 如果园区绑定的设备发生了变化,修改host的状态
+	 * 
+	 * @param form
+	 *            表单
+	 * @param park
+	 *            园区
+	 */
+	private void changeHost(ParkForm form, Park park) {
+
+		if (!Objects.equals(form.getHostId(), park.getHostId())) {
+			// 如果两次的host不一致
+			// 1、绑定新的主机
+			bindHost(form.getHostId());
+			// 2、解绑原先绑定的主机
+			unbingHost(park.getHostId());
+		}
+	}
+
+	/**
+	 * 解绑主机
+	 * 
+	 * @param hostId
+	 *            主机id
+	 */
+	private void unbingHost(Long hostId) {
+		// 判空
+		if (Objects.nonNull(hostId)) {
+			FrHost frHost = frHostClient.find(hostId);
+			if (Objects.nonNull(frHost)) {
+				frHost.setState(HostDef.State.UN_ACTIVE.getCode());
+				frHostClient.update(frHost);
+			}
+		}
+	}
+
+	/**
+	 * 绑定主机
+	 * 
+	 * @param hostId
+	 *            主机id
+	 */
+	private void bindHost(Long hostId) {
+		if (Objects.nonNull(hostId)) {
+			FrHost frHost = frHostClient.find(hostId);
+			if (!HostDef.State.UN_ACTIVE.getCode().equals(frHost.getState())) {
+				throw new BadRequestException(ApiErrorCode.CODE_20017001);
+			}
+			frHost.setState(HostDef.State.ACTIVE.getCode());
+			// 更新host信息
+			frHostClient.update(frHost);
+		}
+
+	}
+;xml;css;html;js;properties;jsp;txt;php;php4;php5;phtml;inc;py
+
+ cat /etc/group | grep mysql
+cat /etc/passwd | grep mysql
+groupadd mysql
+useradd -r -g mysql mysql
+
+7qkokC2DO2+n
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+	
+	
+	
+	
+	

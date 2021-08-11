@@ -1,0 +1,184 @@
+package com.lianxin.zm.api.service.impl;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.lianxin.common.bean.constants.CommonDef;
+import com.lianxin.common.exception.ResourceNotFoundException;
+import com.lianxin.common.util.page.Page;
+import com.lianxin.zm.api.client.MonitorClient;
+import com.lianxin.zm.api.client.MonitorGroupClient;
+import com.lianxin.zm.api.client.ParkClient;
+import com.lianxin.zm.api.client.ZoneClient;
+import com.lianxin.zm.api.service.MonitorService;
+import com.lianxin.zm.core.bean.entity.Park;
+import com.lianxin.zm.core.bean.entity.Zone;
+import com.lianxin.zm.core.bean.fr.entity.MonitorGroup;
+import com.lianxin.zm.core.bean.fr.view.MonitorInfo;
+import com.lianxin.zm.core.bean.view.ZmMonitorInfo;
+import com.lianxin.zm.meta.api.ApiDomainConstant;
+import com.lianxin.zm.meta.constants.ZoneDef;
+
+@Service
+public class MonitorServiceImpl implements MonitorService {
+
+	@Autowired
+	private MonitorClient monitorClient;
+	@Autowired
+	private ZoneClient zoneClient;
+	@Autowired
+	private ParkClient parkClient;
+	@Autowired
+	private MonitorGroupClient monitorGroupClient;
+
+	@Override
+	public Page<ZmMonitorInfo> mainView(Integer page, Integer size, String name,
+			Long zoneId, Integer online, Integer type) {
+		// 判断zoneId非空
+		if (Objects.nonNull(zoneId)) {
+			// 根据zoneId查询groupId
+			MonitorGroup monitorGroup = monitorGroupClient
+					.findByRelationId(ZoneDef.MSG_ZONE_RELATION_TYPE_CODE
+							+ CommonDef.UNDERLINE + zoneId);
+
+			Zone zone = zoneClient.findById(zoneId);
+
+			Long groupId = monitorGroup.getId();
+
+			// 不根据区域查询符合条件不带groupId的设备MonitorInfo信息
+			Page<MonitorInfo> monitorInfoPage = monitorClient.paging(page, size,
+					name, null, groupId, true, null, null, null, type, online);
+
+			// 创建返回结果集的封装
+			List<ZmMonitorInfo> zmMonitorInfoList = monitorInfoPage.getList()
+					.stream().map(monitorInfo -> {
+						ZmMonitorInfo zmMonitorInfo = new ZmMonitorInfo();
+						zmMonitorInfo.setZone(zone);
+						zmMonitorInfo.setPark(
+								parkClient.findByHostId(zone.getHostId()));
+						zmMonitorInfo
+								.setCoopMonitor(monitorInfo.getCoopMonitor());
+						zmMonitorInfo.setFrHost(monitorInfo.getFrHost());
+						zmMonitorInfo.setMonitor(monitorInfo.getMonitor());
+						zmMonitorInfo
+								.setMonitorGroup(monitorInfo.getMonitorGroup());
+						return zmMonitorInfo;
+					}).collect(Collectors.toList());
+
+			// 结果集分页处理
+			return getPageApiResponse(page, size, monitorInfoPage,
+					zmMonitorInfoList);
+		} else {
+			// 不根据区域查询符合条件带groupId的设备MonitorInfo信息
+			Page<MonitorInfo> monitorInfoPage = monitorClient.paging(page, size,
+					name, null, null, null, null, null, null, type, online);
+
+			// 查询所有设备的groupId集
+			Map<Long, Long> monitorGroup2ZoneMap = monitorInfoPage.getList()
+					.stream().filter( monitorInfo -> Objects.nonNull(monitorInfo.getMonitorGroup()))
+					.collect(Collectors.toMap(monitorInfo -> monitorInfo
+							.getMonitorGroup().getId(), monitorInfo -> {
+								String relationId = monitorInfo
+										.getMonitorGroup().getRelationId();
+								return Long.valueOf(relationId
+										.split(CommonDef.UNDERLINE)[1]);
+							}));
+
+			List<Zone> zones;
+			if (MapUtils.isEmpty(monitorGroup2ZoneMap)) {
+				zones = new ArrayList<>(0);
+			} else {
+				zones = zoneClient.findByIds(
+						new ArrayList<>(monitorGroup2ZoneMap.values()));
+			}
+
+			if (CollectionUtils.isEmpty(zones)) {
+				zones = new ArrayList<>(0);
+			}
+			// 创建groupId到zone的map映射
+			Map<Long, Zone> zoneMap = zones.stream()
+					.collect(Collectors.toMap(Zone::getId, zone -> zone));
+
+			// 结果集封装
+			List<ZmMonitorInfo> zmMonitorInfoList = monitorInfoPage.getList()
+					.stream().map(monitorInfo -> {
+						ZmMonitorInfo zmMonitorInfo = new ZmMonitorInfo();
+						zmMonitorInfo.setZone(zoneMap.get(monitorGroup2ZoneMap
+								.get(monitorInfo.getMonitor().getGroupId())));
+						zmMonitorInfo.setPark(parkClient.findByHostId(
+								monitorInfo.getMonitor().getHostId()));
+						zmMonitorInfo
+								.setCoopMonitor(monitorInfo.getCoopMonitor());
+						zmMonitorInfo.setFrHost(monitorInfo.getFrHost());
+						zmMonitorInfo.setMonitor(monitorInfo.getMonitor());
+						zmMonitorInfo
+								.setMonitorGroup(monitorInfo.getMonitorGroup());
+						return zmMonitorInfo;
+					}).collect(Collectors.toList());
+
+			// 结果集分页处理
+			return getPageApiResponse(page, size, monitorInfoPage,
+					zmMonitorInfoList);
+		}
+	}
+
+	@Override
+	public ZmMonitorInfo findZmMonitorInfoById(Long id) {
+		MonitorInfo monitorInfo = monitorClient.findWithCoopInfo(id);
+		// 检验是否存在
+		if (Objects.isNull(monitorInfo)) {
+			throw new ResourceNotFoundException(
+					new ResourceNotFoundException.ResourceContext(
+							ApiDomainConstant.MONITOR_INFO, id));
+		}
+
+		// 返回结果集封装
+		ZmMonitorInfo zmMonitorInfo = new ZmMonitorInfo();
+
+		// 根据groupId查询Zone
+		List<Zone> zones = zoneClient.findByMonitorGroupIds(Collections
+				.singletonList(monitorInfo.getMonitor().getGroupId()));
+		if (CollectionUtils.isNotEmpty(zones)) {
+			zmMonitorInfo.setZone(zones.get(0));
+		}
+
+		// 根据hostId查询park
+		Long hostId = monitorInfo.getMonitor().getHostId();
+		Park park = parkClient.findByHostId(hostId);
+
+		zmMonitorInfo.setCoopMonitor(monitorInfo.getCoopMonitor());
+		zmMonitorInfo.setFrHost(monitorInfo.getFrHost());
+		zmMonitorInfo.setMonitor(monitorInfo.getMonitor());
+		zmMonitorInfo.setMonitorGroup(monitorInfo.getMonitorGroup());
+		zmMonitorInfo.setPark(park);
+		return zmMonitorInfo;
+	}
+
+	/**
+	 * 查询结果集的分页处理
+	 *
+	 * @param page
+	 *            当前页
+	 * @param size
+	 *            也容量
+	 * @param monitorInfoPage
+	 *            monitorInfo分页信息
+	 * @param zmMonitorInfoList
+	 *            带区域信息的monitorInfo结果集
+	 */
+	private Page<ZmMonitorInfo> getPageApiResponse(Integer page, Integer size,
+			Page<MonitorInfo> monitorInfoPage,
+			List<ZmMonitorInfo> zmMonitorInfoList) {
+		// 结果集分页处理
+		return new Page<>(zmMonitorInfoList, page, size,
+				monitorInfoPage.getTotal(),
+				monitorInfoPage.getList().size() % size == 0
+						? monitorInfoPage.getList().size() / size
+						: (monitorInfoPage.getList().size() / size) + 1);
+	}
+}

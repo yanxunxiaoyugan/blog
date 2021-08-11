@@ -1,0 +1,2 @@
+1、添加handShakeInterceptor（把用户信息保存到websocket Session）
+

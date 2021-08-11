@@ -1,0 +1,14 @@
+dn: uid=admin001,ou=People,dc=example,dc=com
+changetype: modify
+replace: telephoneNumber
+telephoneNumber: 17688889999
+
+dn: uid=test,ou=People,dc=example,dc=com
+changetype: modify
+replace: telephoneNumber
+telephoneNumber: 17688889999
+
+dn: uid=admin,ou=People,dc=example,dc=com
+changetype: modify
+replace: telephoneNumber
+telephoneNumber: 17688889999

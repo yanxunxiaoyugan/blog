@@ -1,0 +1,156 @@
+企业微信回调： 加密解密
+创建员工后的邀请
+员工导出
+
+t8xFLS52js3PUHiSduYRcv79yuSmHv
+aY60hUebTAXyv3M2zWuODp8rv4wpVs5fpxRe0zHwXbR
+
+<xml>
+<ToUserName><![CDATA[ww1515bfa65074bd7d]]></ToUserName>
+<FromUserName><![CDATA[sys]]></FromUserName>
+<CreateTime>1605604240</CreateTime>
+<MsgType><![CDATA[event]]></MsgType>
+<Event><![CDATA[change_contact]]></Event>
+<ChangeType><![CDATA[update_user]]></ChangeType>
+<UserID><![CDATA[xiognshihao]]></UserID>
+<Email><![CDATA[15sdfadq1asd@qq.com]]></Email>
+</xml>
+
+callBack data:WxWorkCallBack{toUserName='ww1515bfa65074bd7d',
+ fromUserName='sys', createTime='1605607656',
+ msgType='event', event='change_contact', 
+ changeType='update_user', wxWorkUserId='xiognshihao', name='世豪12113', position='null', gender='null', mobile='null',
+ department=null, id=null, parentId=null}
+ \
+ 
+   public int fourSumCount(int[] A, int[] B, int[] C, int[] D) {
+        int len = A.length;
+        Integer count = 0;
+        Integer res = 0;
+        Map<Integer,Integer> map = new HashMap<>();
+        for (int i = 0; i < len; i++) {
+            for (int j = 0; j < len; j++) {
+                res = A[i] + B[j];
+                map.put(res,map.getOrDefault(res,0)+1);
+            }
+        }
+        for (int i = 0; i < len; i++) {
+            for (int j = 0; j < len; j++) {
+                res = C[i] + D[j];
+                count += map.getOrDefault(-res, 0);
+            }
+        }
+        return count;
+    }
+ 原本是开启：
+    关闭
+原本是关闭：
+	开启
+	
+	员工审批
+	弱电下发人脸
+	
+			// 当前通过审核
+		if (VisitApplyDef.Audit.YES.getCode().equals(auditState)) {
+			VisitApplyDetail visitApplyDetail = visitApplyDetailService
+					.findByVisitApplyId(visitApply.getId(),
+							VisitApplyDetailDef.State.AUDITING.getCode());
+			// 如果只剩下一级审批
+			if (Objects.isNull(visitApplyDetail.getNextId())) {
+
+				Long parkId = zone.getParkId();
+				VisitMsg msg = new VisitMsg();
+				// 如果通过审核，需要把上次已通过审核的记录清除
+				VisitApply lastVisitApply = this
+						.findOneByVisitorIdAndAudited(visitor.getId());
+				if (Objects.nonNull(lastVisitApply)) {
+					zoneService.findOne(lastVisitApply.getZoneId()).ifPresent(
+							lastVisitZone -> msg.setLastPersonGroupId(
+									lastVisitZone.getVisitorGroupId()));
+				}
+
+				msg.setParkId(parkId);
+				msg.setRelationType(PersonMsgDef.VISITOR_RELATION_TYPE);
+				msg.setRelationId(String.valueOf(visitor.getId()));
+				msg.setRecogStartTime(
+						visitApply.getStartTime().atZone(ZoneId.systemDefault())
+								.toInstant().toEpochMilli());
+				msg.setRecogEndTime(
+						visitApply.getEndTime().atZone(ZoneId.systemDefault())
+								.toInstant().toEpochMilli());
+
+				msg.setVisitGroupRelationType(
+						PersonGroupMsgDef.PERSON_GROUP_RELATION_TYPE);
+				msg.setVisitGroupRelationId(
+						String.valueOf(personGroup.getId()));
+
+				visitEventSender.sendApplyAudit(msg);
+				visitApply.setAuditState(auditState);
+				visitApply.setState(VisitApplyDef.State.AUDITED.getCode());
+				super.update(visitApply);
+
+				visitApplyDetail
+						.setState(VisitApplyDetailDef.State.PASS.getCode());
+
+				visitApplyDetailService.update(visitApplyDetail);
+				// 审核完成 推送消息给门岗和访客
+				Employee employee = employeeClient
+						.findByPhone(visitApply.getVisitedPhone());
+				// 推送给访客
+				this.pushToVisitor(employee, visitor, visitApply);
+				List<GateKeeper> gateKeepers = gatekeeperService
+						.findByZoneId(visitApply.getZoneId());
+				// 推送给门岗
+				enterPriseWeChatMessageManager.sendApplyMsg(employee.getName(),
+						null, visitor, visitApply);
+			} else {
+				// 二级审批，发送消息给审批人
+				VisitApplyDetail nextVisitApplyDetail = visitApplyDetailService
+						.findOne(visitApplyDetail.getNextId())
+						.orElseThrow(() -> new IllegalArgumentException(
+								"VisitApplyDetail："
+										+ visitApplyDetail.getNextId()
+										+ " do not exist!"));
+				Employee employee = employeeClient
+						.findById(nextVisitApplyDetail.getHandler());
+				visitApplyDetail
+						.setState(VisitApplyDetailDef.State.PASS.getCode());
+				visitApplyDetailService.update(visitApplyDetail);
+				nextVisitApplyDetail
+						.setState(VisitApplyDetailDef.State.AUDITING.getCode());
+				visitApplyDetailService.update(nextVisitApplyDetail);
+				enterPriseWeChatMessageManager.sendApplyMsg(employee.getName(),
+						employee.getWxworkUserId(), visitor, visitApply);
+				// 推送给访客
+				this.pushToVisitor(employee, visitor, visitApply);
+			}
+
+		} else if (VisitApplyDef.Audit.NO.getCode().equals(auditState)) {
+			// 如果申请被拒绝 全部拒绝,推送消息给访客 结束流程
+			Employee employee = employeeClient
+					.findByPhone(visitApply.getVisitedPhone());
+			this.rejectVisitApply(visitApply.getId(),
+					VisitApplyDetailDef.State.AUDITING.getCode());
+
+			this.pushToVisitor(employee, visitor, visitApply);
+		}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	

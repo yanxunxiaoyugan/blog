@@ -1,0 +1,35 @@
+docker --help： 查看docker的所有命令的使用方式
+docker version: 查看docker的版本
+docker info: 查看docker的信息
+------------docker的镜像命令
+docker images -a(所有镜像) -f（filter） -q（只显示id） ：查看docker中所有镜像
+docker search: 搜索镜像
+docker pull：拉取镜像 使用docker拉取时，会使用分层下载
+docker rmi：删除镜像
+	--docker rmi -f ...镜像的id ： 删除指定的id的镜像，可以输入多个镜像id
+	--docker rmi -f $(docker images -aq): 删除所有的镜像
+------------docker的容器命令
+docker run [可选参数] images
+	参数说明：
+	--name="name" 			 ：指定容器的名字
+	-it						 ：启用交互模式，可以进入容器
+					eg：docker run -it centos /bin/bash
+	-d			 			 ：后台方式运行
+	-p	主机端口:映射端口  	 :映射主机端口
+	-P			   			 :随机指定端口
+docker exec -it mysql bash: 进入mysql
+docker ps:  查看运行中容器
+docker rm 容器id：根据容器id删除容器
+docker rm -f $(docker ps -aq): 删除所有的容器
+docker start 容器id
+docker restart
+docker stop
+docker kill
+docker logs 查看日志
+docker top 容器id
+docker cp 容器id:容器内路径 主机路径（把容器内的文件复制到主机）
+docker commit -a 作者 -m 提交说明 容器id 新的镜像名
+docker run -it --name docker02 --volumes-from docker01 liu/cnetos:1.0
+
+
+
